@@ -3,8 +3,24 @@ from tastypie import fields, utils
 from tastypie.authorization import Authorization
 from evento.models import *
 from django.contrib.auth.models import User
+from tastypie.exceptions import Unauthorized
 
 class TipoInscricaoResource(ModelResource): # OK
+    def obj_create(self, bundle, **kwargs):
+
+        if not(TipoInscricao.objects.filter(descricao = bundle.data['descricao'])):
+            print(bundle.data)
+            tipo = TipoInscricao()
+            tipo.descricao = bundle.data['descricao'].upper()
+            tipo.save()
+            bundle.obj = tipo
+            return bundle
+        else:
+            raise Unauthorized('Já existe um Tipo de Inscrição com essa descricao')
+
+    def obj_delete_list(self, bundle, **kwargs):
+        raise Unauthorized('Ops! Você não pode deletar a lista inteira')
+
     class Meta:
         queryset = TipoInscricao.objects.all()
         allowed_methods = ['get','post','put','delete']
@@ -87,9 +103,17 @@ class ArtigoCientificoResource(ModelResource): # OK
 
 
 class InscricaoResource(ModelResource): # OK
-    pessoa = fields.ToOneField(PessoaFisicaResource, 'pessoa') # relacionamento de chave estrangeira, na tela mostra a referência da pessoa (URI)
-    evento = fields.ToOneField(EventoResource, 'evento')
-    tipoInscricao = fields.ToOneField(TipoInscricaoResource, 'tipoInscricao')
+
+
+    def obj_create(self, bundle, **kwargs):
+
+        if not( (Inscricoes.objects.filter(pessoa = bundle.data['pessoa']) and (Inscricoes.objects.filter(evento = bundle.data['evento']) ))):
+            pessoa = fields.ToOneField(PessoaFisicaResource, 'pessoa') # relacionamento de chave estrangeira, na tela mostra a referência da pessoa (URI)
+            evento = fields.ToOneField(EventoResource, 'evento')
+            tipoInscricao = fields.ToOneField(TipoInscricaoResource, 'tipoInscricao')
+        else:
+            raise Unauthorized('Uma mesma pessoa não pode se inscrever mais de 1 vez em cada evento')
+
     class Meta:
         queryset = Inscricoes.objects.all()
         allowed_methods = ['get', 'post', 'put']
