@@ -104,15 +104,24 @@ class ArtigoCientificoResource(ModelResource): # OK
 
 class InscricaoResource(ModelResource): # OK
 
-
     def obj_create(self, bundle, **kwargs):
 
-        if not( (Inscricoes.objects.filter(pessoa = bundle.data['pessoa']) and (Inscricoes.objects.filter(evento = bundle.data['evento']) ))):
-            pessoa = fields.ToOneField(PessoaFisicaResource, 'pessoa') # relacionamento de chave estrangeira, na tela mostra a referência da pessoa (URI)
-            evento = fields.ToOneField(EventoResource, 'evento')
-            tipoInscricao = fields.ToOneField(TipoInscricaoResource, 'tipoInscricao')
+        pessoa = bundle.data['pessoa'].split("/")
+        evento = bundle.data['evento'].split("/")
+        tipoInsc = bundle.data['tipoInscricao'].split("/")
+
+        listaInscricoes = Inscricoes.objects.filter(pessoa=pessoa[4], evento=evento[4]) # Essa vírgula faz a operação 'and' como se fosse no select
+
+        if listaInscricoes.count() > 0:
+            raise Unauthorized('Essa Pessoa já está inscrita nesse Evento');
         else:
-            raise Unauthorized('Uma mesma pessoa não pode se inscrever mais de 1 vez em cada evento')
+            inscricao = Inscricoes()
+            inscricao.pessoa = PessoaFisica.objects.get(pk=pessoa[4]) # É necessário montar o objeto com o split feito na URI, porque não dá certo se passar só o ID
+            inscricao.evento = Evento.objects.get(pk=evento[4])
+            inscricao.tipoInscricao = TipoInscricao.objects.get(pk=tipoInsc[4])
+            inscricao.save()
+            bundle.obj = inscricao
+            return bundle
 
     class Meta:
         queryset = Inscricoes.objects.all()
